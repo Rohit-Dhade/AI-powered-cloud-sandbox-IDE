@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { agent } from "../agents/code.agent.js";
+import agent from "../agents/code.agent.js";
 
 const agentRouter = Router();
 
@@ -19,7 +19,7 @@ agentRouter.post("/invoke", async (req, res) => {
         .json({ error: "A non-empty 'sandboxId' string is required." });
     }
 
-    const response = await agent.invoke(
+    const response = await agent.stream(
       {
         messages: [
           {
@@ -29,11 +29,16 @@ agentRouter.post("/invoke", async (req, res) => {
         ],
       },
       {
-        context: {
+        configurable: {
           sandboxId,
         },
+        streamMode: "custom"
       },
     );
+
+    for await (const chunk of response) {
+      console.log(chunk);
+    }
 
     return res.status(200).json({
       message: response,
