@@ -10,13 +10,14 @@ import * as z from "zod";
 export const listfiles = tool(
   async ({ }, config) => {
 
-    const writer = config.writer;
+    const writer = config.configurable?.writer ?? (() => { });
 
-    writer.write("Listing files in project directories...\n");
+    writer("Listing files in project directories...\n");
 
     const response = await axios.get(`http://sandbox-service-${config.configurable.sandboxId.trim()}:3000/list-files`);
 
-    writer.write("Files listed successfully...\n");
+    writer("Listing files successfully:" + "files: " + response.data.files.join(",") + "\n");
+
 
     return JSON.stringify(response.data.files);
   },
@@ -31,15 +32,15 @@ export const listfiles = tool(
 export const readfiles = tool(
   async ({ files = [] }, config) => {
 
-    const writer = config.writer;
+    const writer = config.configurable?.writer ?? (() => { });
 
-    writer.write("Reading files from project directories...\n");
+    writer("Reading files from project directories...\n");
 
     const response = await axios.get(
       `http://sandbox-service-${config.configurable.sandboxId.trim()}:3000/read-files?files=` + files.join(","),
     );
 
-    writer.write("Files read successfully...\n");
+    writer("Files Reading : " + response.data.results.join(",") + "\n");
 
     return JSON.stringify(response.data.results);
   },
@@ -61,15 +62,15 @@ export const readfiles = tool(
 export const updateFiles = tool(
   async ({ files }, config) => {
 
-    const writer = config.writer;
+    const writer = config.configurable?.writer ?? (() => { });
 
-    writer.write("Updating files in project directories...\n");
+    writer("Updating files in project directories...\n");
 
     const response = await axios.patch(`http://sandbox-service-${config.configurable.sandboxId.trim()}:3000/update-files`, {
       updates: files,
     });
 
-    writer.write("Files updated successfully...\n");
+    writer("Files updated successfully: " + response.data.results.map((result) => result.file).join("\n") + "\n");
 
     return JSON.stringify(response.data.results);
   },

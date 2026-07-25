@@ -19,6 +19,10 @@ agentRouter.post("/invoke", async (req, res) => {
         .json({ error: "A non-empty 'sandboxId' string is required." });
     }
 
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
     const response = await agent.stream(
       {
         messages: [
@@ -38,6 +42,7 @@ agentRouter.post("/invoke", async (req, res) => {
 
     for await (const chunk of response) {
       console.log(chunk);
+      res.write(`data: ${chunk}\n\n`);
     }
 
     return res.status(200).json({
