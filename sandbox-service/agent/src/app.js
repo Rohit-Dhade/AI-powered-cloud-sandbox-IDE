@@ -2,6 +2,9 @@ import express from "express";
 import morgan from "morgan";
 import fs from "fs";
 import path from "path";
+import { Server } from "socket.io";
+import http from "http";
+import pty from "node-pty";
 
 const DEFAULT_WORKSPACE_ROOT = process.env.SANDBOX_WORKSPACE_ROOT || "/workspace";
 const FALLBACK_WORKSPACE_ROOT = path.resolve(process.cwd(), ".sandbox-workspace");
@@ -35,6 +38,16 @@ const toWorkspaceRelativePath = (resolvedPath) => {
 };
 
 const app = express();
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
 app.use(express.json());
 app.use(morgan("dev"));
 
@@ -42,6 +55,36 @@ app.get("/", (req, res) => {
   res.status(200).json({
     message: "Welcome to the Sandbox Service Agent!",
     status: "success",
+  });
+});
+
+const shell = process.env.SHELL || "bash";
+
+const ptyProcess = pty.spawn(shell, [], {
+  name: 'xterm-color',
+  cols: 80,
+  rows: 30,
+  cwd: "/workspace",
+  env: process.env,
+})
+
+ptyProcess.onData((data) => {
+  io.emit('terminal-output', data);
+})
+
+ptyProcess.onExit(({ exitCode, signal }) => {
+  console.log(`Process exited with code ${exitCode}, signal: ${signal}`)
+})
+
+io.on("connection", (socket) => {
+  console.log("a user connected", socket.id);
+
+  socket.on("terminal-input", (data) => {
+    ptyProcess.write(data);
+  })
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected: ", socket.id);
   });
 });
 
@@ -268,4 +311,4 @@ app.post("/create-files", async (req, res) => {
   });
 });
 
-export default app;
+export default httpServer;

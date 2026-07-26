@@ -1,4 +1,5 @@
 import express from "express";
+import http from "http";                     // <-- ADDED
 import { createProxyMiddleware } from "http-proxy-middleware";
 import morgan from "morgan";
 
@@ -70,4 +71,27 @@ app.get("/", (req, res) => {
   res.status(200).send("Sandbox router is ready");
 });
 
-export default app;
+// ================= ADDED BLOCK START =================
+const server = http.createServer(app);
+
+server.on("upgrade", (req, socket, head) => {
+  const host = req.headers.host || "";
+  const parts = host.split(".");
+  const sandboxId = parts[0];
+  const type = parts[1]; // "agent" or "preview"
+
+  let proxy;
+  if (type === "agent") {
+    proxy = getAgentProxy(sandboxId);
+  } else if (type === "preview") {
+    proxy = getProxy(sandboxId);
+  } else {
+    socket.destroy();
+    return;
+  }
+
+  proxy.upgrade(req, socket, head);
+});
+
+export default server;   
+export { app };          
