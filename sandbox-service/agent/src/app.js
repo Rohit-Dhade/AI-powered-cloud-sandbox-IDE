@@ -5,6 +5,10 @@ import path from "path";
 import { Server } from "socket.io";
 import http from "http";
 import pty from "node-pty";
+import cors from 'cors';
+
+
+app.use(cors({ methods: ["GET","POST","PATCH","DELETE"], origin: "*" }));
 
 const DEFAULT_WORKSPACE_ROOT = process.env.SANDBOX_WORKSPACE_ROOT || "/workspace";
 const FALLBACK_WORKSPACE_ROOT = path.resolve(process.cwd(), ".sandbox-workspace");

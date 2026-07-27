@@ -2,6 +2,10 @@ import express from "express";
 import http from "http";                     // <-- ADDED
 import { createProxyMiddleware } from "http-proxy-middleware";
 import morgan from "morgan";
+import { createProxyServer } from 'httpxy';
+
+const wsProxy = createProxyServer({ changeOrigin: true });
+wsProxy.on('error', (err, req, socket) => { socket?.destroy(); });
 
 const app = express();
 app.use(morgan("combined"));
@@ -24,7 +28,7 @@ function getProxy(sandboxId) {
     proxies[sandboxId] = createProxyMiddleware({
       target,
       changeOrigin: true,
-      ws: true,
+      // ws: true,
       logLevel: "silent",
       preserveHeaderKeyCase: true,
       xfwd: true,
@@ -43,7 +47,7 @@ function getAgentProxy(sandboxId) {
     agentProxies[sandboxId] = createProxyMiddleware({
       target,
       changeOrigin: true,
-      ws: true,
+      // ws: true,
       logLevel: "silent",
       preserveHeaderKeyCase: true,
       xfwd: true,
@@ -74,24 +78,18 @@ app.get("/", (req, res) => {
 // ================= ADDED BLOCK START =================
 const server = http.createServer(app);
 
-server.on("upgrade", (req, socket, head) => {
-  const host = req.headers.host || "";
-  const parts = host.split(".");
-  const sandboxId = parts[0];
-  const type = parts[1]; // "agent" or "preview"
-
-  let proxy;
-  if (type === "agent") {
-    proxy = getAgentProxy(sandboxId);
-  } else if (type === "preview") {
-    proxy = getProxy(sandboxId);
-  } else {
-    socket.destroy();
-    return;
+server.on('upgrade', (req, socket, head) => {
+  socket.on('error', () => socket.destroy());   // guard against EPIPE during live pipe
+  if (type === 'agent') {
+    getAgentProxy(sandboxId).upgrade(req, socket, head);  // throws — method gone in v4
+    wsProxy.ws(req, socket, { target: `http://sandbox-service-${sandboxId}:3000` }, head)
+      .catch(() => socket.destroy());
+  } else if (type === 'preview') {
+    getProxy(sandboxId).upgrade(req, socket, head);
+    wsProxy.ws(req, socket, { target: `http://sandbox-service-${sandboxId}` }, head)
+      .catch(() => socket.destroy());
   }
-
-  proxy.upgrade(req, socket, head);
 });
 
-export default server;   
+export default server;
 export { app };          
