@@ -11,6 +11,21 @@ app.use(express.json());
 app.use(morgan("combined"));
 app.use(cookieParser());
 
+app.get('/_status/healthz', (req, res) => {
+    res.status(200).json({
+        message: "Auth service is healthy",
+        status: "success",
+    });
+})
+
+
+app.get('/_status/readyz', (req, res) => {
+    res.status(200).json({
+        message: "Auth service is ready",
+        status: "success",
+    });
+})
+
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
