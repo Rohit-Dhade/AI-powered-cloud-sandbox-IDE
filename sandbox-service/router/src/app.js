@@ -3,6 +3,7 @@ import http from "http";                     // <-- ADDED
 import { createProxyMiddleware } from "http-proxy-middleware";
 import morgan from "morgan";
 import { createProxyServer } from 'httpxy';
+import refreshTTL from "./config/redis.js";
 
 const wsProxy = createProxyServer({ changeOrigin: true });
 wsProxy.on('error', (err, req, socket) => { socket?.destroy(); });
@@ -59,14 +60,16 @@ function getAgentProxy(sandboxId) {
   return agentProxies[sandboxId];
 }
 
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
   const host = req.headers.host || "";
 
   const sandboxId = host.split(".")[0];
+  const sandboxType = host.split(".")[1];
+  await refreshTTL(sandboxId);
 
-  if (host.split(".")[1] === "agent") {
+  if (sandboxType === "agent") {
     return getAgentProxy(sandboxId)(req, res, next);
-  } else if (host.split(".")[1] === "preview") {
+  } else if (sandboxType === "preview") {
     return getProxy(sandboxId)(req, res, next);
   }
 });

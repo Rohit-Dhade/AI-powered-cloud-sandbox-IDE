@@ -5,20 +5,6 @@ import passport from "passport"
 
 const authRouter = Router();
 
-// Router.get("/auth/register", (req, res) => {
-//     res.status(200).json({
-//         message: "User registered successfully",
-//         status: "success",
-//     });
-// })
-
-// authRouter.get("/auth/login", (req, res) => {
-//     res.status(200).json({
-//         message: "User logged in successfully",
-//         status: "success",
-//     });
-// })
-
 authRouter.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
 
 authRouter.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), async (req, res) => {
