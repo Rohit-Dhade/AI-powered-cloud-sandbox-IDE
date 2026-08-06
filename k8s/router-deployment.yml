@@ -19,11 +19,11 @@ spec:
         name:  router-server
         resources:
           requests:
-            cpu: "250m"
-            memory: "250M"
+            cpu: "50m"
+            memory: "32Mi"
           limits:
-            cpu: "500m"
-            memory: "500M"
+            cpu: "300m"
+            memory: "128Mi"
         livenessProbe:
           httpGet:
             path: /api/status/healthz
@@ -40,7 +40,7 @@ spec:
           - name: REDIS_URL
             valueFrom:
               secretKeyRef:
-                name: redis-secret
+                name: database
                 key: REDIS_URL 
         ports:
         - containerPort:  3000

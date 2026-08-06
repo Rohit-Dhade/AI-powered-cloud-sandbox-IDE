@@ -21,8 +21,8 @@ spec:
         - name: MISTRALAI_API_KEY
           valueFrom:
             secretKeyRef:
-              name: ai-secrets
-              key: MISTRALAI_API_KEY
+              name: ai-secret
+              key: MISTRAL_API_KEY
         resources:
           requests:
             cpu: "250m"

@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name:  auth-deployment
+  name: notification-deployment
   labels:
-    name:  auth-deployment
+    name: notification-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: auth
+      app: notification
   template:
     metadata:
       labels:
-        app: auth
+        app: notification
     spec:
       containers:
-      - name:  auth-container
-        image: auth
+      - name: notification-container
+        image: notification
         imagePullPolicy: IfNotPresent
         resources:
           requests:
@@ -28,17 +28,17 @@ spec:
         livenessProbe:
           httpGet:
             path: /_status/healthz
-            port: 3000
+            port: 4000
           initialDelaySeconds: 90
           timeoutSeconds: 10
         readinessProbe:
           httpGet:
-            path: /_status/healthz
-            port: 3000
+            path: /_status/readyz
+            port: 4000
           initialDelaySeconds: 30
           timeoutSeconds: 10
         env:
-        - name:  AUTH_MONGODB_URI
+        - name: AUTH_MONGODB_URI
           valueFrom:
             secretKeyRef:
               name: database
@@ -56,27 +56,30 @@ spec:
               name: google
               key: GOOGLE_CLIENT_SECRET
 
-
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: jwt
               key: JWT_SECRET
 
-        - name: GOOGLE_REFRESH_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: google
-              key: GOOGLE_REFRESH_TOKEN
-
         - name: RABBITMQ_URL
           valueFrom:
             secretKeyRef:
               name: database
               key: RABBITMQ_URL
+
+        - name: EMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: google
+              key: EMAIL_USER
+
+        - name: GOOGLE_REFRESH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: google
+              key: GOOGLE_REFRESH_TOKEN
               
         ports:
-        - containerPort:  3000
-          name: auth-http
-        
-      
+        - containerPort:  4000  
+          name: noti-http

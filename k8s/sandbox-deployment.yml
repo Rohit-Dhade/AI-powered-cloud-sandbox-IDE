@@ -20,12 +20,12 @@ spec:
         imagePullPolicy: IfNotPresent
         name:  main-sandbox-container
         resources:
-          limits:
-            cpu: "500m"
-            memory: "400Mi"
           requests:
-            cpu: "250m"
-            memory: "200Mi"
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "300m"
+            memory: "256Mi"
         livenessProbe:
           httpGet:
             path: /api/sandbox/health
@@ -36,8 +36,15 @@ spec:
           - name: REDIS_URL
             valueFrom:
               secretKeyRef:
-                name: redis-secret
+                name: database
                 key: REDIS_URL
+
+          - name: JWT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: jwt
+                key: JWT_SECRET
+
         readinessProbe:
           httpGet:
             path: /api/sandbox/health
