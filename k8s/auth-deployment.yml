@@ -75,6 +75,18 @@ spec:
               name: database
               key: RABBITMQ_URL
               
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: google
+              key: SESSION_SECRET
+
+        - name: GOOGLE_CALLBACK_URL
+          valueFrom:
+            secretKeyRef:
+              name: google
+              key: GOOGLE_CALLBACK_URL
+              
         ports:
         - containerPort:  3000
           name: auth-http

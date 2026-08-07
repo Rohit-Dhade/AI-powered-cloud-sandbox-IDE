@@ -1,41 +1,70 @@
-import "dotenv/config"
+import "dotenv/config";
 import express from "express";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import passport from "passport";
+import session from "express-session";
 import authRouter from "./routes/auth.routes.js";
+import User from "./models/users.model.js";
 
 const app = express();
+
+app.use(
+    session({
+        secret: process.env.SESSION_SECRET,
+        resave: false,
+        saveUninitialized: false,
+    })
+);
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => {
+    done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+    try {
+        const user = await User.findById(id);
+        done(null, user);
+    } catch (error) {
+        done(error, null);
+    }
+});
+
 app.use(express.json());
 app.use(morgan("combined"));
 app.use(cookieParser());
 
-app.get('/_status/healthz', (req, res) => {
+passport.use(
+    new GoogleStrategy(
+        {
+            clientID: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            callbackURL: process.env.GOOGLE_CALLBACK_URL,
+        },
+        (accessToken, refreshToken, profile, done) => {
+            return done(null, profile);
+        }
+    )
+);
+
+app.get("/_status/healthz", (req, res) => {
     res.status(200).json({
         message: "Auth service is healthy",
         status: "success",
     });
-})
+});
 
-
-app.get('/_status/readyz', (req, res) => {
+app.get("/_status/readyz", (req, res) => {
     res.status(200).json({
         message: "Auth service is ready",
         status: "success",
     });
-})
-
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/api/auth/google/callback",
-    scope: ["profile", "email"],
-    state: true,
-}, (accessToken, refreshToken, profile, done) => {
-    return done(null, profile);
-}));
+});
 
 app.use("/api/auth", authRouter);
 
-export default app;  
+export default app;

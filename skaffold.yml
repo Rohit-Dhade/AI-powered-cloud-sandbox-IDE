@@ -11,9 +11,8 @@ build:
       docker:
         dockerfile: dockerfile
       sync:
-        manual:
-          - src: "src/**"
-            dest: /app
+        infer:
+          - "src/**"
 
     - image: auth
       context: Auth
@@ -35,23 +34,34 @@ build:
       context: sandbox-service/agent
       docker:
         dockerfile: dockerfile
+      sync:
+        infer:
+          - "src/**"
 
     - image: router
       context: sandbox-service/router
       docker:
         dockerfile: dockerfile
+      sync:
+        infer:
+          - "src/**"
 
     - image: sandbox
       context: sandbox-service/server
       docker:
         dockerfile: dockerfile
+      sync:
+        infer:
+          - "src/**"
 
     - image: template
       context: sandbox-service/templates
       docker:
         dockerfile: dockerfile
-
-
+      sync:
+        infer:
+          - "src/**"
+   
 manifests:
   rawYaml:
     - k8s/ai-deployment.yml

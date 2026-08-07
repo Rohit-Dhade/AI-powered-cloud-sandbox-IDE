@@ -1,47 +1,84 @@
 import { Router } from "express";
 import User from "../models/users.model.js";
 import jwt from "jsonwebtoken";
-import passport from "passport"
+import passport from "passport";
 import { sendAuthNotification } from "../config/mq.js";
 
 const authRouter = Router();
 
-authRouter.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
+authRouter.get(
+    "/google",
+    passport.authenticate("google", {
+        scope: ["profile", "email"],
+    })
+);
 
-authRouter.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), async (req, res) => {
-    try {
+authRouter.get(
+    "/google/callback",
+    passport.authenticate("google", {
+        failureRedirect: "/login",
+    }),
+    async (req, res) => {
+        try {
+            const { id, displayName, emails, photos } = req.user;
 
-        const { id, displayName, emails, photos } = req.user
-        const user = await User.findOne({ googleId: id })
+            const email = emails?.[0]?.value;
+            const avatar = photos?.[0]?.value;
 
-        await sendAuthNotification({
-            email: emails[0].value,
-            userId: user._id,
-            timestamp: new Date(),
-            action: 'google_login',
-        })
+            if (!email) {
+                return res.status(400).json({
+                    message: "Google account does not provide an email",
+                    status: "error",
+                });
+            }
 
-        if (!user) {
-            const newUser = new User({
+            let user = await User.findOne({
                 googleId: id,
-                name: displayName,
-                email: emails[0].value,
-                avatar: photos[0].value,
-            })
-            await newUser.save()
+            });
+
+            if (!user) {
+                user = new User({
+                    googleId: id,
+                    name: displayName,
+                    email: email,
+                    avatar: avatar,
+                });
+
+                await user.save();
+            }
+
+            await sendAuthNotification({
+                email: email,
+                userId: user._id,
+                timestamp: new Date(),
+                action: "google_login",
+            });
+
+            const token = jwt.sign(
+                {
+                    id: user._id,
+                },
+                process.env.JWT_SECRET,
+                {
+                    expiresIn: "1h",
+                }
+            );
+
+            res.cookie("token", token, {
+                httpOnly: true,
+            });
+
+            res.redirect("http://localhost:5173");
+
+        } catch (error) {
+            console.error("Google authentication error:", error);
+
+            return res.status(500).json({
+                message: "Failed to authenticate user",
+                status: "error",
+            });
         }
-
-        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" })
-
-        res.cookie("token", token, {
-            httpOnly: true,
-        });
-
-        res.redirect('/');
-    } catch (error) {
-        res.status(500).json({ message: "Failed to register user", status: "error" });
-        res.redirect('/');
     }
-});
+);
 
 export default authRouter;

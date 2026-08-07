@@ -45,6 +45,12 @@ spec:
                 name: jwt
                 key: JWT_SECRET
 
+          - name: SANDBOX_MONGODB_URI
+            valueFrom:
+              secretKeyRef:
+                name: database
+                key: SANDBOX_MONGODB_URI
+
         readinessProbe:
           httpGet:
             path: /api/sandbox/health
