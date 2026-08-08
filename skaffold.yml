@@ -38,6 +38,14 @@ build:
         infer:
           - "src/**"
 
+    - image: sync-agent
+      context: sandbox-service/sync-agent
+      docker:
+        dockerfile: dockerfile
+      sync:
+        infer:
+          - "**"
+
     - image: router
       context: sandbox-service/router
       docker:
