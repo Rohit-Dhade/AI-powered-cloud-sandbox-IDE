@@ -16,6 +16,19 @@ const projectId = process.env.PROJECT_ID
 const bucketName = process.env.S3_BUCKET_NAME
 const localDirectory = '/workspace'
 
+async function checkS3ForFiles() {
+    const command = new ListObjectsV2Command({
+        Bucket: bucketName,
+        Prefix: `${projectId}/`
+    });
+
+    const response = await s3Client.send(command);
+
+    console.log("S3 objects:", response.Contents || []);
+
+    return response.Contents || [];
+}
+
 async function downloadFilesFromS3(s3Objects) {
     console.log("Found existing files in S3. Syncing to local directory...");
     for (const file of s3Objects) {
@@ -47,15 +60,17 @@ async function downloadFilesFromS3(s3Objects) {
 
 async function uploadFileToS3(filePath) {
     try {
+
+        if (
+            filePath.includes('node_modules') ||
+            filePath.includes('.env')
+        ) {
+            return;
+        }
+
         const fileContent = fs.readFileSync(filePath);
         const relativePath = path.relative(localDirectory, filePath);
 
-        if (filePath.includes('node_modules') || filePath.includes('.env')) {
-            return; // Skip syncing node_modules and .env files
-        }
-
-        console.log(filePath)
-        // Files will have the prefix of projectId
         const s3Key = `${projectId}/${relativePath}`;
 
         const command = new PutObjectCommand({
@@ -65,7 +80,11 @@ async function uploadFileToS3(filePath) {
         });
 
         await s3Client.send(command);
-        console.log(`Successfully synced ${filePath} to s3://${bucketName}/${s3Key}`);
+
+        console.log(
+            `Successfully synced ${filePath} to s3://${bucketName}/${s3Key}`
+        );
+
     } catch (err) {
         console.error(`Error syncing ${filePath} to S3:`, err);
     }
