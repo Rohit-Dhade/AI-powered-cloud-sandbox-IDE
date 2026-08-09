@@ -6,6 +6,6 @@ COPY package*.json ./
 
 RUN npm install
 
-COPY . .
+COPY sync.js /app/
 
 CMD ["node", "sync.js"]
