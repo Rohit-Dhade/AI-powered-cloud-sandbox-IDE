@@ -3,7 +3,7 @@ import http from "http";                     // <-- ADDED
 import { createProxyMiddleware } from "http-proxy-middleware";
 import morgan from "morgan";
 import { createProxyServer } from 'httpxy';
-import refreshTTL from "./config/redis.js";
+import {refreshTTL} from "./config/redis.js";
 
 const wsProxy = createProxyServer({ changeOrigin: true });
 wsProxy.on('error', (err, req, socket) => { socket?.destroy(); });
@@ -83,12 +83,14 @@ const server = http.createServer(app);
 
 server.on('upgrade', (req, socket, head) => {
   socket.on('error', () => socket.destroy());   // guard against EPIPE during live pipe
-  if (type === 'agent') {
-    getAgentProxy(sandboxId).upgrade(req, socket, head);  // throws — method gone in v4
+  const host = req.headers.host || "";
+  const sandboxId = host.split(".")[0];
+  const sandboxType = host.split(".")[1];
+
+  if (sandboxType === 'agent') {
     wsProxy.ws(req, socket, { target: `http://sandbox-service-${sandboxId}:3000` }, head)
       .catch(() => socket.destroy());
-  } else if (type === 'preview') {
-    getProxy(sandboxId).upgrade(req, socket, head);
+  } else if (sandboxType === 'preview') {
     wsProxy.ws(req, socket, { target: `http://sandbox-service-${sandboxId}` }, head)
       .catch(() => socket.destroy());
   }

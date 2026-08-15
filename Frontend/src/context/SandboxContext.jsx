@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { startSandbox } from '../services/api';
+import { startSandbox, createProject } from '../services/api';
 
 const SandboxContext = createContext(null);
 
@@ -8,12 +8,16 @@ export function SandboxProvider({ children }) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(null);
 
-  const createSandbox = useCallback(async () => {
+  const createSandbox = useCallback(async (projectTitle) => {
     setStarting(true);
     setError(null);
     try {
-      const data = await startSandbox();
-      setSandbox({ sandboxId: data.sandboxId, previewUrl: data.previewUrl });
+      const title = typeof projectTitle === 'string' && projectTitle.trim() ? projectTitle.trim() : 'Untitled Project';
+      const projectData = await createProject(title);
+      const projectId = projectData.project._id;
+
+      const data = await startSandbox(projectId);
+      setSandbox({ sandboxId: data.sandboxId, previewUrl: data.previewUrl, projectId });
     } catch (err) {
       setError(err.message);
     } finally {

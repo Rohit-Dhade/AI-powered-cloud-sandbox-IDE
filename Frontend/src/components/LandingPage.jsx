@@ -1,7 +1,15 @@
+import { useState } from 'react';
 import { useSandbox } from '../context/SandboxContext';
 
 export default function LandingPage() {
   const { starting, error, createSandbox } = useSandbox();
+  const [projectTitle, setProjectTitle] = useState('');
+
+  const handleCreateSandbox = (e) => {
+    e.preventDefault();
+    if (!projectTitle.trim()) return;
+    createSandbox(projectTitle.trim());
+  };
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full overflow-hidden bg-[#0a0a0f]">
@@ -40,12 +48,12 @@ export default function LandingPage() {
           <span className="gradient-text">SandboxAI</span>
         </h1>
         <p className="text-xl text-slate-400 mb-2 font-medium">AI-Powered Frontend Studio</p>
-        <p className="text-sm text-slate-500 max-w-md mb-12 leading-relaxed">
+        <p className="text-sm text-slate-500 max-w-md mb-8 leading-relaxed">
           Spin up an isolated sandbox, describe your UI to the AI, and watch your frontend come alive — with live preview and terminal access.
         </p>
 
         {/* Feature badges */}
-        <div className="flex flex-wrap gap-3 justify-center mb-12">
+        <div className="flex flex-wrap gap-3 justify-center mb-8">
           {[
             { icon: '⚡', label: 'Instant Sandbox' },
             { icon: '🤖', label: 'AI Code Gen' },
@@ -60,33 +68,47 @@ export default function LandingPage() {
           ))}
         </div>
 
-        {/* CTA Button */}
-        <button
-          id="start-sandbox-btn"
-          onClick={createSandbox}
-          disabled={starting}
-          className="relative group px-10 py-4 rounded-2xl text-white font-semibold text-lg transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #8b5cf6 100%)' }}
-        >
-          {/* Hover shine */}
-          <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)' }} />
-          <span className="relative flex items-center gap-3">
-            {starting ? (
-              <>
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin-slow" />
-                Starting Sandbox…
-              </>
-            ) : (
-              <>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polygon points="5,3 19,12 5,21" fill="currentColor" />
-                </svg>
-                Create Sandbox
-              </>
-            )}
-          </span>
-        </button>
+        {/* Form area for Project Title + CTA Button */}
+        <form onSubmit={handleCreateSandbox} className="w-full max-w-md flex flex-col gap-4 mb-4">
+          <div className="relative">
+            <input
+              type="text"
+              id="project-title-input"
+              placeholder="Enter Project Title..."
+              value={projectTitle}
+              onChange={(e) => setProjectTitle(e.target.value)}
+              disabled={starting}
+              className="w-full px-5 py-3.5 rounded-2xl bg-slate-900/90 border border-slate-700/60 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all text-center font-medium shadow-inner"
+            />
+          </div>
+
+          <button
+            type="submit"
+            id="start-sandbox-btn"
+            disabled={starting || !projectTitle.trim()}
+            className="relative group w-full py-4 rounded-2xl text-white font-semibold text-lg transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden shadow-lg shadow-indigo-500/20"
+            style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #8b5cf6 100%)' }}
+          >
+            {/* Hover shine */}
+            <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)' }} />
+            <span className="relative flex items-center justify-center gap-3">
+              {starting ? (
+                <>
+                  <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin-slow" />
+                  Starting Sandbox…
+                </>
+              ) : (
+                <>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="5,3 19,12 5,21" fill="currentColor" />
+                  </svg>
+                  Create Sandbox
+                </>
+              )}
+            </span>
+          </button>
+        </form>
 
         {/* Error */}
         {error && (

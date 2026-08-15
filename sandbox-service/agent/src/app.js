@@ -8,7 +8,6 @@ import pty from "node-pty";
 import cors from 'cors';
 
 
-app.use(cors({ methods: ["GET","POST","PATCH","DELETE"], origin: "*" }));
 
 const DEFAULT_WORKSPACE_ROOT = process.env.SANDBOX_WORKSPACE_ROOT || "/workspace";
 const FALLBACK_WORKSPACE_ROOT = path.resolve(process.cwd(), ".sandbox-workspace");
@@ -54,6 +53,7 @@ const io = new Server(httpServer, {
 
 app.use(express.json());
 app.use(morgan("dev"));
+app.use(cors({ methods: ["GET","POST","PATCH","DELETE"], origin: "*" }));
 
 app.get("/", (req, res) => {
   res.status(200).json({

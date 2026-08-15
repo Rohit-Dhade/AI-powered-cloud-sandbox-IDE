@@ -1,12 +1,29 @@
 // Sandbox API service
 const BASE_URL = '/api';
 
+export async function createProject(title = 'Untitled Project') {
+  const res = await fetch(`${BASE_URL}/sandbox/project`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  });
+  if (!res.ok) throw new Error(`Failed to create project: ${res.statusText}`);
+  return res.json();
+}
+
 /**
  * Start a new sandbox
+ * @param {string} projectId
  * @returns {Promise<{sandboxId: string, previewUrl: string}>}
  */
-export async function startSandbox() {
-  const res = await fetch(`${BASE_URL}/sandbox/start`, { method: 'POST' });
+export async function startSandbox(projectId) {
+  const res = await fetch(`${BASE_URL}/sandbox/start`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ projectId })
+  });
   if (!res.ok) throw new Error(`Failed to start sandbox: ${res.statusText}`);
   return res.json();
 }
