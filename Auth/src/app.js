@@ -15,6 +15,11 @@ app.use(
         secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
+        cookie: {
+            secure: false,       // Must be false for HTTP (localhost)
+            sameSite: "lax",     // Allows the cookie to survive Google's cross-site redirect
+            maxAge: 24 * 60 * 60 * 1000, // 1 day
+        },
     })
 );
 

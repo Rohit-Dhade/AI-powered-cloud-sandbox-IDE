@@ -66,9 +66,12 @@ authRouter.get(
 
             res.cookie("token", token, {
                 httpOnly: true,
+                sameSite: "lax",
+                secure: false,
             });
 
-            res.redirect("http://localhost:5173");
+            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+            res.redirect(frontendUrl);
 
         } catch (error) {
             console.error("Google authentication error:", error);

@@ -85,7 +85,31 @@ export default function WorkspaceLayout() {
   const [activeRightTab, setActiveRightTab] = useState('Preview');
   const [activeBottomTab, setActiveBottomTab] = useState('Terminal');
 
+  // Streaming agent logs (tool events + errors) displayed in the Logs tab
+  const [agentLogs, setAgentLogs] = useState([]);
+
   const containerRef = useRef(null);
+  const logsEndRef = useRef(null);
+
+  // Auto-scroll logs panel
+  useEffect(() => {
+    if (activeBottomTab === 'Logs') {
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [agentLogs, activeBottomTab]);
+
+  const handleToolLog = useCallback((line, type = 'tool') => {
+    setAgentLogs(prev => [
+      ...prev,
+      { id: `${Date.now()}-${Math.random()}`, text: line, type, ts: Date.now() },
+    ]);
+    // Switch to Logs tab automatically when a tool fires
+    setActiveBottomTab('Logs');
+  }, []);
+
+  const handleClearLogs = useCallback(() => {
+    setAgentLogs([]);
+  }, []);
 
   // Compute rightTopHeight default based on container
   useEffect(() => {
@@ -153,7 +177,7 @@ export default function WorkspaceLayout() {
       <div ref={containerRef} className="flex flex-1 min-h-0">
         {/* Chat panel */}
         <div className="flex-shrink-0 flex flex-col border-r border-white/5" style={{ width: `${chatWidth}px` }}>
-          <ChatPanel sandboxId={sandboxId} />
+          <ChatPanel sandboxId={sandboxId} onToolLog={handleToolLog} onClearLogs={handleClearLogs} />
         </div>
 
         {/* Horizontal resize handle */}
@@ -249,10 +273,34 @@ export default function WorkspaceLayout() {
             <div className="flex-1 min-h-0 overflow-hidden">
               {activeBottomTab === 'Terminal' && <TerminalPanel sandboxId={sandboxId} />}
               {activeBottomTab === 'Logs' && (
-                <div className="flex-1 overflow-auto p-4 font-mono text-xs text-slate-500 h-full">
-                  <p className="text-emerald-400">✓ Sandbox started: {sandboxId}</p>
-                  <p className="mt-1">Preview URL: {previewUrl}</p>
-                  <p className="mt-1 text-slate-600">Waiting for activity…</p>
+                <div className="flex-1 overflow-auto p-4 font-mono text-xs h-full bg-[#07070e]">
+                  {/* Always-present sandbox info */}
+                  <p className="text-emerald-400 mb-1">✓ Sandbox started: {sandboxId}</p>
+                  <p className="text-slate-600 mb-3">Preview: {previewUrl}</p>
+
+                  {agentLogs.length === 0 ? (
+                    <p className="text-slate-700 italic">No agent activity yet — send a message to see tool logs here.</p>
+                  ) : (
+                    agentLogs.map(entry => {
+                      const color =
+                        entry.type === 'error' ? 'text-rose-400' :
+                        entry.type === 'tool'  ? 'text-amber-300' :
+                        'text-slate-300';
+                      const prefix =
+                        entry.type === 'error' ? '✗' :
+                        entry.type === 'tool'  ? '⚙' :
+                        '›';
+                      const time = new Date(entry.ts).toLocaleTimeString();
+                      return (
+                        <div key={entry.id} className={`flex gap-2 mb-0.5 leading-relaxed ${color}`}>
+                          <span className="text-slate-600 flex-shrink-0">{time}</span>
+                          <span className="flex-shrink-0">{prefix}</span>
+                          <span className="whitespace-pre-wrap break-all">{entry.text}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={logsEndRef} />
                 </div>
               )}
             </div>

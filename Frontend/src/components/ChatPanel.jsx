@@ -62,7 +62,7 @@ function TypingIndicator() {
   );
 }
 
-export default function ChatPanel({ sandboxId }) {
+export default function ChatPanel({ sandboxId, onToolLog, onClearLogs }) {
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
@@ -118,6 +118,9 @@ export default function ChatPanel({ sandboxId }) {
     setInput('');
     setIsStreaming(true);
 
+    // Clear previous agent logs when a new message is sent
+    onClearLogs?.();
+
     const userMsgId = `user-${Date.now()}`;
     addMessage({ id: userMsgId, role: 'user', content: text, timestamp: Date.now() });
 
@@ -131,7 +134,9 @@ export default function ChatPanel({ sandboxId }) {
     try {
       await invokeAI(text, sandboxId, (chunk, type) => {
         if (type === 'tool') {
-          // Show tool calls inline
+          // Push tool log to the Logs panel
+          onToolLog?.(chunk, 'tool');
+          // Also show tool calls inline in chat
           setMessages(prev => {
             const newMsgs = [...prev];
             const toolMsg = {
@@ -150,6 +155,10 @@ export default function ChatPanel({ sandboxId }) {
             }
             return newMsgs;
           });
+        } else if (type === 'error') {
+          onToolLog?.(chunk, 'error');
+          streamContent += chunk;
+          updateLastAssistantMessage(streamContent);
         } else {
           streamContent += chunk;
           updateLastAssistantMessage(streamContent);
@@ -157,6 +166,7 @@ export default function ChatPanel({ sandboxId }) {
       });
       finalizeAssistantMessage();
     } catch (err) {
+      onToolLog?.(err.message, 'error');
       setMessages(prev => {
         const newMsgs = [...prev];
         const idx = newMsgs.findIndex(m => m.id === streamMsgId);
