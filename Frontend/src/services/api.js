@@ -11,6 +11,12 @@ export async function createProject(title = 'Untitled Project') {
   return res.json();
 }
 
+export async function getProjects() {
+  const res = await fetch(`${BASE_URL}/sandbox/projects`);
+  if (!res.ok) throw new Error(`Failed to fetch projects: ${res.statusText}`);
+  return res.json(); // { projects: [...] }
+}
+
 /**
  * Start a new sandbox
  * @param {string} projectId

@@ -1,12 +1,36 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { startSandbox, createProject } from '../services/api';
 
 const SandboxContext = createContext(null);
 
+const SESSION_KEY = 'sandbox_session';
+
+function readSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(data) {
+  try {
+    if (data) sessionStorage.setItem(SESSION_KEY, JSON.stringify(data));
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch { /* storage quota / private mode */ }
+}
+
 export function SandboxProvider({ children }) {
-  const [sandbox, setSandbox] = useState(null); // { sandboxId, previewUrl }
+  // Restore from sessionStorage on first render so reloads keep the workspace
+  const [sandbox, setSandbox] = useState(() => readSession());
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Keep sessionStorage in sync whenever sandbox changes
+  useEffect(() => {
+    writeSession(sandbox);
+  }, [sandbox]);
 
   const createSandbox = useCallback(async (projectTitle) => {
     setStarting(true);
@@ -17,7 +41,7 @@ export function SandboxProvider({ children }) {
       const projectId = projectData.project._id;
 
       const data = await startSandbox(projectId);
-      setSandbox({ sandboxId: data.sandboxId, previewUrl: data.previewUrl, projectId });
+      setSandbox({ sandboxId: data.sandboxId, previewUrl: data.previewUrl, projectId, title });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -25,8 +49,27 @@ export function SandboxProvider({ children }) {
     }
   }, []);
 
+  /** Resume an existing project by spinning up a new sandbox pod for it */
+  const resumeSandbox = useCallback(async (project) => {
+    setStarting(true);
+    setError(null);
+    try {
+      const data = await startSandbox(project._id);
+      setSandbox({ sandboxId: data.sandboxId, previewUrl: data.previewUrl, projectId: project._id, title: project.title });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setStarting(false);
+    }
+  }, []);
+
+  /** Clear the active sandbox and go back to the landing/project-list page */
+  const clearSandbox = useCallback(() => {
+    setSandbox(null);
+  }, []);
+
   return (
-    <SandboxContext.Provider value={{ sandbox, starting, error, createSandbox }}>
+    <SandboxContext.Provider value={{ sandbox, starting, error, createSandbox, resumeSandbox, clearSandbox }}>
       {children}
     </SandboxContext.Provider>
   );
