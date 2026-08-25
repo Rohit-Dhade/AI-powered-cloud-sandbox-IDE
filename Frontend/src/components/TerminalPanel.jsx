@@ -19,26 +19,26 @@ export default function TerminalPanel({ sandboxId }) {
       fontSize: 13,
       fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
       theme: {
-        background: '#0a0a0f',
+        background: '#010f1f',
         foreground: '#e2e8f0',
-        cursor: '#818cf8',
-        cursorAccent: '#0a0a0f',
-        black: '#1e1e32',
+        cursor: '#22d3ee',
+        cursorAccent: '#010f1f',
+        black: '#0d1c2d',
         red: '#f43f5e',
         green: '#10b981',
         yellow: '#f59e0b',
         blue: '#6366f1',
-        magenta: '#8b5cf6',
-        cyan: '#06b6d4',
-        white: '#e2e8f0',
-        brightBlack: '#383860',
+        magenta: '#a855f7',
+        cyan: '#22d3ee',
+        white: '#f1f5f9',
+        brightBlack: '#273647',
         brightRed: '#fb7185',
         brightGreen: '#34d399',
         brightYellow: '#fbbf24',
         brightBlue: '#818cf8',
-        brightMagenta: '#a78bfa',
-        brightCyan: '#22d3ee',
-        brightWhite: '#f8fafc',
+        brightMagenta: '#c084fc',
+        brightCyan: '#38bdf8',
+        brightWhite: '#ffffff',
       },
       allowTransparency: true,
       scrollback: 5000,
@@ -59,10 +59,10 @@ export default function TerminalPanel({ sandboxId }) {
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    term.writeln('\x1b[1;34m╭──────────────────────────────────────╮\x1b[0m');
-    term.writeln('\x1b[1;34m│  \x1b[1;35mSandboxAI Terminal\x1b[1;34m                   │\x1b[0m');
-    term.writeln('\x1b[1;34m│  \x1b[0;36mConnecting to sandbox...\x1b[1;34m             │\x1b[0m');
-    term.writeln('\x1b[1;34m╰──────────────────────────────────────╯\x1b[0m');
+    term.writeln('\x1b[1;36m╭──────────────────────────────────────╮\x1b[0m');
+    term.writeln('\x1b[1;36m│  \x1b[1;35mSandboxAI Luminous Terminal\x1b[1;36m         │\x1b[0m');
+    term.writeln('\x1b[1;36m│  \x1b[0;32mConnecting to container...\x1b[1;36m          │\x1b[0m');
+    term.writeln('\x1b[1;36m╰──────────────────────────────────────╯\x1b[0m');
     term.writeln('');
 
     return term;
@@ -82,12 +82,12 @@ export default function TerminalPanel({ sandboxId }) {
     });
 
     socket.on('connect', () => {
-      term.writeln('\x1b[1;32m✓ Connected to sandbox terminal\x1b[0m');
+      term.writeln('\x1b[1;32m✓ Connected to sandbox shell session\x1b[0m');
       term.writeln('');
     });
 
     socket.on('disconnect', () => {
-      term.writeln('\r\n\x1b[1;33m⚠ Terminal disconnected. Attempting to reconnect...\x1b[0m');
+      term.writeln('\r\n\x1b[1;33m⚠ Terminal disconnected. Reconnecting...\x1b[0m');
     });
 
     socket.on('connect_error', (err) => {
@@ -128,24 +128,24 @@ export default function TerminalPanel({ sandboxId }) {
   }, [sandboxId, initTerminal, connectSocket]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]">
+    <div className="flex flex-col h-full bg-[#010f1f]">
       {/* Terminal toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-white/5 bg-[#0f0f1a]">
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-indigo-500/15 bg-[#051424]">
         <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded-full bg-rose-500/80" />
-          <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-          <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+          <div className="w-3 h-3 rounded-full bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.4)]" />
+          <div className="w-3 h-3 rounded-full bg-amber-500/80 shadow-[0_0_6px_rgba(245,158,11,0.4)]" />
+          <div className="w-3 h-3 rounded-full bg-emerald-500/80 shadow-[0_0_6px_rgba(16,185,129,0.4)]" />
         </div>
-        <span className="text-xs font-medium text-slate-400 flex items-center gap-2">
+        <span className="text-xs font-mono font-medium text-cyan-300 flex items-center gap-2">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="4 17 10 11 4 5" />
             <line x1="12" y1="19" x2="20" y2="19" />
           </svg>
           bash — {sandboxId.slice(0, 8)}…
         </span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs text-emerald-400">Live</span>
+        <div className="ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0d1c2d] border border-indigo-500/20">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#10b981]" />
+          <span className="text-[11px] font-mono text-emerald-400">Live</span>
         </div>
       </div>
 

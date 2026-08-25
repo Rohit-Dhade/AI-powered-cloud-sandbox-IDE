@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import passport from "passport";
 import session from "express-session";
+import mongoose from "mongoose";
 import authRouter from "./routes/auth.routes.js";
 import User from "./models/users.model.js";
 
@@ -27,17 +28,24 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 passport.serializeUser((user, done) => {
-    done(null, user.id);
+    done(null, user._id || user.id);
 });
 
 passport.deserializeUser(async (id, done) => {
     try {
-        const user = await User.findById(id);
+        let user = null;
+        if (id && mongoose.Types.ObjectId.isValid(id)) {
+            user = await User.findById(id);
+        }
+        if (!user && id) {
+            user = await User.findOne({ googleId: String(id) });
+        }
         done(null, user);
     } catch (error) {
         done(error, null);
     }
 });
+
 
 app.use(express.json());
 app.use(morgan("combined"));

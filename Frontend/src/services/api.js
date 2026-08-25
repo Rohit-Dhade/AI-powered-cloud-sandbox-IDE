@@ -1,6 +1,24 @@
 // Sandbox API service
 const BASE_URL = '/api';
 
+export async function getMe() {
+  const res = await fetch(`${BASE_URL}/auth/me`);
+  if (!res.ok) {
+    return { authenticated: false, user: null };
+  }
+  return res.json();
+}
+
+export async function logoutUser() {
+  const res = await fetch(`${BASE_URL}/auth/logout`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!res.ok) throw new Error('Logout failed');
+  return res.json();
+}
+
+
 export async function createProject(title = 'Untitled Project') {
   const res = await fetch(`${BASE_URL}/sandbox/project`, {
     method: 'POST',

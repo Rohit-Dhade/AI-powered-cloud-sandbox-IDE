@@ -43,11 +43,16 @@ export function SandboxProvider({ children }) {
       const data = await startSandbox(projectId);
       setSandbox({ sandboxId: data.sandboxId, previewUrl: data.previewUrl, projectId, title });
     } catch (err) {
-      setError(err.message);
+      if (err.message?.includes('401') || err.message?.includes('Unauthorized') || err.message?.includes('missing')) {
+        setError('Authentication required. Please sign in with Google to create a project.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setStarting(false);
     }
   }, []);
+
 
   /** Resume an existing project by spinning up a new sandbox pod for it */
   const resumeSandbox = useCallback(async (project) => {

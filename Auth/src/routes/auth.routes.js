@@ -21,10 +21,10 @@ authRouter.get(
     }),
     async (req, res) => {
         try {
-            const { id, displayName, emails, photos } = req.user;
-
-            const email = emails?.[0]?.value;
-            const avatar = photos?.[0]?.value;
+            const googleId = req.user?.googleId || req.user?.id;
+            const displayName = req.user?.name || req.user?.displayName || "User";
+            const email = req.user?.email || req.user?.emails?.[0]?.value;
+            const avatar = req.user?.avatar || req.user?.photos?.[0]?.value;
 
             if (!email) {
                 return res.status(400).json({
@@ -34,12 +34,12 @@ authRouter.get(
             }
 
             let user = await User.findOne({
-                googleId: id,
+                googleId: googleId,
             });
 
             if (!user) {
                 user = new User({
-                    googleId: id,
+                    googleId: googleId,
                     name: displayName,
                     email: email,
                     avatar: avatar,
@@ -47,6 +47,7 @@ authRouter.get(
 
                 await user.save();
             }
+
 
             await sendAuthNotification({
                 email: email,
@@ -84,5 +85,41 @@ authRouter.get(
         }
     }
 );
+
+authRouter.get("/me", async (req, res) => {
+    try {
+        const token = req.cookies?.token || req.headers['authorization']?.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ authenticated: false, user: null, message: "No token provided" });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return res.status(401).json({ authenticated: false, user: null, message: "User not found" });
+        }
+
+        return res.status(200).json({
+            authenticated: true,
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                avatar: user.avatar,
+            }
+        });
+    } catch (error) {
+        return res.status(401).json({ authenticated: false, user: null, message: "Invalid token" });
+    }
+});
+
+authRouter.post("/logout", (req, res) => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: false,
+    });
+    return res.status(200).json({ message: "Logged out successfully" });
+});
 
 export default authRouter;

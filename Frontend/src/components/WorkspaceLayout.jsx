@@ -1,309 +1,259 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import ChatPanel from './ChatPanel';
-import PreviewPanel from './PreviewPanel';
-import TerminalPanel from './TerminalPanel';
-import FileExplorer from './FileExplorer';
+import { useState, useCallback, useRef } from 'react';
 import { useSandbox } from '../context/SandboxContext';
-
-const TABS = ['Preview', 'Files'];
-const BOTTOM_TABS = ['Terminal', 'Logs'];
-
-function ResizeHandleH({ onResize }) {
-  const dragging = useRef(false);
-  const startX = useRef(0);
-  const startWidth = useRef(0);
-
-  const onMouseDown = useCallback((e) => {
-    dragging.current = true;
-    startX.current = e.clientX;
-    startWidth.current = e.currentTarget.parentElement?.getBoundingClientRect().width || 0;
-
-    const onMouseMove = (e) => {
-      if (!dragging.current) return;
-      onResize(e.clientX - startX.current);
-    };
-    const onMouseUp = () => {
-      dragging.current = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, [onResize]);
-
-  return (
-    <div
-      onMouseDown={onMouseDown}
-      className="resize-handle w-1 flex-shrink-0 relative group"
-    >
-      <div className="absolute inset-0 group-hover:bg-indigo-500/40 transition-colors duration-150" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-0.5 h-8 rounded-full bg-white/10 group-hover:bg-indigo-400/60 transition-colors duration-150" />
-    </div>
-  );
-}
-
-function ResizeHandleV({ onResize }) {
-  const dragging = useRef(false);
-  const startY = useRef(0);
-
-  const onMouseDown = useCallback((e) => {
-    dragging.current = true;
-    startY.current = e.clientY;
-
-    const onMouseMove = (e) => {
-      if (!dragging.current) return;
-      onResize(e.clientY - startY.current);
-      startY.current = e.clientY;
-    };
-    const onMouseUp = () => {
-      dragging.current = false;
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }, [onResize]);
-
-  return (
-    <div
-      onMouseDown={onMouseDown}
-      className="resize-handle-v h-1 flex-shrink-0 relative group"
-    >
-      <div className="absolute inset-0 group-hover:bg-indigo-500/40 transition-colors duration-150" />
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-0.5 w-8 rounded-full bg-white/10 group-hover:bg-indigo-400/60 transition-colors duration-150" />
-    </div>
-  );
-}
+import { useAuth } from '../context/AuthContext';
+import ChatPanel from './ChatPanel';
+import FileExplorer from './FileExplorer';
+import TerminalPanel from './TerminalPanel';
+import PreviewPanel from './PreviewPanel';
 
 export default function WorkspaceLayout() {
-  const { sandbox } = useSandbox();
-  const { sandboxId, previewUrl } = sandbox;
+  const { sandboxId, previewUrl, killSandbox } = useSandbox();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'code' | 'logs'
+  const [activeRightTab, setActiveRightTab] = useState('preview'); // 'preview' | 'terminal'
+  const [logs, setLogs] = useState([]);
+  const [leftWidth, setLeftWidth] = useState(42); // percentage
+  const [bottomHeight, setBottomHeight] = useState(30); // percentage
+  const [showBottomPanel, setShowBottomPanel] = useState(false);
+  const isDraggingLeft = useRef(false);
+  const isDraggingBottom = useRef(false);
 
-  // Panel state
-  const [chatWidth, setChatWidth] = useState(340);
-  const [rightTopHeight, setRightTopHeight] = useState(null); // null = auto (60%)
-  const [activeRightTab, setActiveRightTab] = useState('Preview');
-  const [activeBottomTab, setActiveBottomTab] = useState('Terminal');
+  // Resize left panel
+  const handleLeftMouseDown = () => {
+    isDraggingLeft.current = true;
+    document.addEventListener('mousemove', handleLeftMouseMove);
+    document.addEventListener('mouseup', handleLeftMouseUp);
+  };
 
-  // Streaming agent logs (tool events + errors) displayed in the Logs tab
-  const [agentLogs, setAgentLogs] = useState([]);
-
-  const containerRef = useRef(null);
-  const logsEndRef = useRef(null);
-
-  // Auto-scroll logs panel
-  useEffect(() => {
-    if (activeBottomTab === 'Logs') {
-      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const handleLeftMouseMove = (e) => {
+    if (!isDraggingLeft.current) return;
+    const newWidth = (e.clientX / window.innerWidth) * 100;
+    if (newWidth >= 25 && newWidth <= 65) {
+      setLeftWidth(newWidth);
     }
-  }, [agentLogs, activeBottomTab]);
+  };
 
-  const handleToolLog = useCallback((line, type = 'tool') => {
-    setAgentLogs(prev => [
-      ...prev,
-      { id: `${Date.now()}-${Math.random()}`, text: line, type, ts: Date.now() },
-    ]);
-    // Switch to Logs tab automatically when a tool fires
-    setActiveBottomTab('Logs');
+  const handleLeftMouseUp = () => {
+    isDraggingLeft.current = false;
+    document.removeEventListener('mousemove', handleLeftMouseMove);
+    document.removeEventListener('mouseup', handleLeftMouseUp);
+  };
+
+  // Tool logs callback
+  const handleToolLog = useCallback((data, type = 'tool') => {
+    setLogs(prev => [...prev, { id: Date.now() + Math.random(), data, type, timestamp: Date.now() }]);
   }, []);
 
   const handleClearLogs = useCallback(() => {
-    setAgentLogs([]);
+    setLogs([]);
   }, []);
 
-  // Compute rightTopHeight default based on container
-  useEffect(() => {
-    const el = containerRef.current;
-    if (el && rightTopHeight === null) {
-      setRightTopHeight(Math.floor(el.getBoundingClientRect().height * 0.6));
-    }
-  }, [rightTopHeight]);
-
-  const handleChatResize = useCallback((dx) => {
-    setChatWidth(w => Math.max(260, Math.min(600, w + dx)));
-  }, []);
-
-  const handleVerticalResize = useCallback((dy) => {
-    setRightTopHeight(h => {
-      const el = containerRef.current;
-      const maxH = el ? el.getBoundingClientRect().height - 120 : 600;
-      return Math.max(120, Math.min(maxH, (h || 400) + dy));
-    });
-  }, []);
+  if (!sandboxId) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#020617] text-slate-400">
+        <p className="text-sm font-mono">No active sandbox session</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f]">
-      {/* Top navigation bar */}
-      <header className="flex items-center gap-4 px-4 py-2.5 border-b border-white/5 bg-[#0f0f1a] flex-shrink-0">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <path d="M7 8l2 2-2 2M11 12h4" />
-            </svg>
+    <div className="flex flex-col h-screen bg-[#020617] text-slate-100 overflow-hidden font-sans">
+      {/* Workspace Top Header */}
+      <header className="h-14 flex items-center justify-between px-5 border-b border-indigo-500/15 bg-[#051424] z-30 shadow-md">
+        {/* Left: Brand + Project Info */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-gradient-to-br from-indigo-500 to-cyan-400 shadow-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8M12 17v4" />
+              </svg>
+            </div>
+            <span className="font-extrabold text-sm gradient-text tracking-tight">SandboxAI</span>
           </div>
-          <span className="font-bold text-sm text-slate-200">SandboxAI</span>
+
+          <div className="h-4 w-px bg-slate-700/60" />
+
+          {/* Sandbox Status Badge */}
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d1c2d] border border-indigo-500/20 text-xs font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#10b981]" />
+            <span className="text-slate-300">
+              ID: <span className="text-cyan-300 font-bold">{sandboxId.slice(0, 10)}…</span>
+            </span>
+          </div>
         </div>
 
-        {/* Divider */}
-        <div className="w-px h-4 bg-white/10" />
-
-        {/* Sandbox badge */}
-        <div className="flex items-center gap-2 px-3 py-1 rounded-lg glass">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-mono text-slate-400">{sandboxId.slice(0, 18)}…</span>
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          <a
-            href={previewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 glass hover:text-white hover:border-indigo-500/30 transition-all duration-200"
+        {/* Middle: Tab Controls for Left Panel */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#0d1c2d] border border-indigo-500/20 shadow-inner">
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all duration-200 cursor-pointer ${
+              activeTab === 'chat'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-              <polyline points="15 3 21 3 21 9" />
-              <line x1="10" y1="14" x2="21" y2="3" />
+            <span>✦</span>
+            <span>AI Chat</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('code')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all duration-200 cursor-pointer ${
+              activeTab === 'code'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <span>📁</span>
+            <span>Files</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('logs')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-medium transition-all duration-200 cursor-pointer ${
+              activeTab === 'logs'
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <span>📋</span>
+            <span>Logs</span>
+            {logs.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-cyan-400 text-slate-950 font-bold">
+                {logs.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-3">
+          {user && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[#0d1c2d] border border-indigo-500/20 text-xs">
+              <span className="text-slate-400 font-mono">User:</span>
+              <span className="text-slate-200 font-semibold">{user.name || user.email}</span>
+            </div>
+          )}
+
+          <button
+            onClick={killSandbox}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-rose-950/30 hover:bg-rose-600 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-medium transition-all cursor-pointer shadow-sm"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
             </svg>
-            Open Preview
-          </a>
+            <span>Exit Sandbox</span>
+          </button>
         </div>
       </header>
 
-      {/* Main content */}
-      <div ref={containerRef} className="flex flex-1 min-h-0">
-        {/* Chat panel */}
-        <div className="flex-shrink-0 flex flex-col border-r border-white/5" style={{ width: `${chatWidth}px` }}>
-          <ChatPanel sandboxId={sandboxId} onToolLog={handleToolLog} onClearLogs={handleClearLogs} />
+      {/* Main Workspace Body */}
+      <div className="flex-1 flex min-h-0 relative">
+        {/* Left Panel */}
+        <div className="flex flex-col min-h-0 bg-[#051424]" style={{ width: `${leftWidth}%` }}>
+          {activeTab === 'chat' && (
+            <ChatPanel
+              sandboxId={sandboxId}
+              onToolLog={handleToolLog}
+              onClearLogs={handleClearLogs}
+            />
+          )}
+          {activeTab === 'code' && (
+            <FileExplorer sandboxId={sandboxId} />
+          )}
+          {activeTab === 'logs' && (
+            <div className="flex flex-col h-full bg-[#020617]">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-indigo-500/15 bg-[#051424]">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">Agent Execution Logs</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono text-slate-400 bg-[#0d1c2d]">
+                    {logs.length} entries
+                  </span>
+                </div>
+                <button
+                  onClick={handleClearLogs}
+                  className="px-3 py-1 rounded-lg text-xs font-mono text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 border border-slate-700/60 transition-all cursor-pointer"
+                >
+                  Clear Logs
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-5 font-mono text-xs space-y-2.5 bg-[#020617]">
+                {logs.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-slate-500 gap-2">
+                    <p>No agent execution logs yet</p>
+                    <p className="text-[11px] text-slate-600">Tool invocations will appear here in real-time</p>
+                  </div>
+                ) : (
+                  logs.map((log) => (
+                    <div
+                      key={log.id}
+                      className={`p-3 rounded-xl border leading-relaxed ${
+                        log.type === 'error'
+                          ? 'bg-rose-950/20 border-rose-500/30 text-rose-300'
+                          : 'bg-[#051424] border-indigo-500/20 text-cyan-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1.5">
+                        <span className="uppercase tracking-wider font-bold text-indigo-400">[{log.type}]</span>
+                        <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <pre className="whitespace-pre-wrap font-mono text-xs">{log.data}</pre>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Horizontal resize handle */}
-        <ResizeHandleH onResize={handleChatResize} />
+        {/* Resizer Handle */}
+        <div
+          onMouseDown={handleLeftMouseDown}
+          className="w-1.5 bg-[#020617] hover:bg-cyan-400/50 cursor-col-resize flex items-center justify-center group transition-colors z-20"
+        >
+          <div className="w-0.5 h-8 bg-slate-700 group-hover:bg-cyan-400 rounded-full transition-colors" />
+        </div>
 
-        {/* Right side: preview + terminal stacked */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Right top: tab panel */}
-          <div className="flex flex-col border-b border-white/5" style={rightTopHeight ? { height: `${rightTopHeight}px`, minHeight: 0 } : { flex: '3', minHeight: 0 }}>
-            {/* Tab bar */}
-            <div className="flex items-center gap-0 border-b border-white/5 bg-[#0f0f1a] flex-shrink-0">
-              {TABS.map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveRightTab(tab)}
-                  className={`px-5 py-2.5 text-xs font-medium border-b-2 transition-all duration-200
-                    ${activeRightTab === tab
-                      ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
-                      : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/3'}`}
-                >
-                  {tab === 'Preview' && (
-                    <span className="flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="2" y="3" width="20" height="14" rx="2" />
-                        <line x1="8" y1="21" x2="16" y2="21" />
-                        <line x1="12" y1="17" x2="12" y2="21" />
-                      </svg>
-                      {tab}
-                    </span>
-                  )}
-                  {tab === 'Files' && (
-                    <span className="flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                      </svg>
-                      {tab}
-                    </span>
-                  )}
-                </button>
-              ))}
+        {/* Right Panel (Preview & Terminal) */}
+        <div className="flex-1 flex flex-col min-w-0 bg-[#020617]">
+          {/* Right Panel Header / Tab switcher */}
+          <div className="h-10 flex items-center justify-between px-4 border-b border-indigo-500/15 bg-[#051424]">
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setActiveRightTab('preview')}
+                className={`flex items-center gap-2 px-3.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                  activeRightTab === 'preview'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                }`}
+              >
+                <span>👁️</span>
+                <span>Live Preview</span>
+              </button>
+              <button
+                onClick={() => setActiveRightTab('terminal')}
+                className={`flex items-center gap-2 px-3.5 py-1 rounded-lg text-xs font-mono font-medium transition-all cursor-pointer ${
+                  activeRightTab === 'terminal'
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                }`}
+              >
+                <span>💻</span>
+                <span>Terminal</span>
+              </button>
             </div>
 
-            {/* Tab content */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {activeRightTab === 'Preview' && <PreviewPanel previewUrl={previewUrl} />}
-              {activeRightTab === 'Files' && <FileExplorer sandboxId={sandboxId} />}
-            </div>
+            <span className="text-[11px] font-mono text-slate-500 truncate max-w-xs">
+              {previewUrl}
+            </span>
           </div>
 
-          {/* Vertical resize */}
-          <ResizeHandleV onResize={handleVerticalResize} />
-
-          {/* Bottom panel: terminal */}
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Bottom tab bar */}
-            <div className="flex items-center gap-0 border-b border-white/5 bg-[#0f0f1a] flex-shrink-0">
-              {BOTTOM_TABS.map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveBottomTab(tab)}
-                  className={`px-5 py-2.5 text-xs font-medium border-b-2 transition-all duration-200
-                    ${activeBottomTab === tab
-                      ? 'border-indigo-500 text-indigo-400 bg-indigo-500/5'
-                      : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/3'}`}
-                >
-                  {tab === 'Terminal' && (
-                    <span className="flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="4 17 10 11 4 5" />
-                        <line x1="12" y1="19" x2="20" y2="19" />
-                      </svg>
-                      {tab}
-                    </span>
-                  )}
-                  {tab === 'Logs' && (
-                    <span className="flex items-center gap-1.5">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="8" y1="6" x2="21" y2="6" />
-                        <line x1="8" y1="12" x2="21" y2="12" />
-                        <line x1="8" y1="18" x2="21" y2="18" />
-                        <line x1="3" y1="6" x2="3.01" y2="6" />
-                        <line x1="3" y1="12" x2="3.01" y2="12" />
-                        <line x1="3" y1="18" x2="3.01" y2="18" />
-                      </svg>
-                      {tab}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Terminal content */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {activeBottomTab === 'Terminal' && <TerminalPanel sandboxId={sandboxId} />}
-              {activeBottomTab === 'Logs' && (
-                <div className="flex-1 overflow-auto p-4 font-mono text-xs h-full bg-[#07070e]">
-                  {/* Always-present sandbox info */}
-                  <p className="text-emerald-400 mb-1">✓ Sandbox started: {sandboxId}</p>
-                  <p className="text-slate-600 mb-3">Preview: {previewUrl}</p>
-
-                  {agentLogs.length === 0 ? (
-                    <p className="text-slate-700 italic">No agent activity yet — send a message to see tool logs here.</p>
-                  ) : (
-                    agentLogs.map(entry => {
-                      const color =
-                        entry.type === 'error' ? 'text-rose-400' :
-                        entry.type === 'tool'  ? 'text-amber-300' :
-                        'text-slate-300';
-                      const prefix =
-                        entry.type === 'error' ? '✗' :
-                        entry.type === 'tool'  ? '⚙' :
-                        '›';
-                      const time = new Date(entry.ts).toLocaleTimeString();
-                      return (
-                        <div key={entry.id} className={`flex gap-2 mb-0.5 leading-relaxed ${color}`}>
-                          <span className="text-slate-600 flex-shrink-0">{time}</span>
-                          <span className="flex-shrink-0">{prefix}</span>
-                          <span className="whitespace-pre-wrap break-all">{entry.text}</span>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div ref={logsEndRef} />
-                </div>
-              )}
-            </div>
+          {/* Right Panel Content */}
+          <div className="flex-1 min-h-0">
+            {activeRightTab === 'preview' ? (
+              <PreviewPanel previewUrl={previewUrl} />
+            ) : (
+              <TerminalPanel sandboxId={sandboxId} />
+            )}
           </div>
         </div>
       </div>
