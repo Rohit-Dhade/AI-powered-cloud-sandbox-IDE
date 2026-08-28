@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { listFiles, readFiles } from '../services/api';
 
-function FileIcon({ name }) {
-  const ext = name.split('.').pop().toLowerCase();
+function FileIcon({ name = '' }) {
+  const ext = (name || '').split('.').pop().toLowerCase();
   const colors = {
     jsx: 'text-cyan-400',
     js: 'text-amber-400',
@@ -39,10 +39,12 @@ function FileIcon({ name }) {
   );
 }
 
-function buildTree(files) {
+function buildTree(files = []) {
+  if (!Array.isArray(files)) return {};
   const tree = {};
   files.forEach(f => {
-    const parts = f.split('/');
+    if (typeof f !== 'string') return;
+    const parts = f.split('/').filter(Boolean);
     let node = tree;
     parts.forEach((part, i) => {
       if (i === parts.length - 1) {
@@ -58,13 +60,15 @@ function buildTree(files) {
 
 function TreeNode({ name, node, depth = 0, onSelect, selectedFile }) {
   const [expanded, setExpanded] = useState(depth < 2);
-  const isFile = node.__file;
+
+  if (!node) return null;
+  const isFile = Boolean(node.__file);
   const isSelected = isFile && node.__path === selectedFile;
 
   if (isFile) {
     return (
       <button
-        onClick={() => onSelect(node.__path)}
+        onClick={() => onSelect?.(node.__path)}
         title={node.__path}
         className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left text-xs font-mono transition-all duration-150 cursor-pointer
           ${isSelected
@@ -110,7 +114,7 @@ function TreeNode({ name, node, depth = 0, onSelect, selectedFile }) {
               name={childName}
               node={childNode}
               depth={depth + 1}
-              onSelect={handleSelectFile}
+              onSelect={onSelect}
               selectedFile={selectedFile}
             />
           ))}
@@ -129,13 +133,14 @@ export default function FileExplorer({ sandboxId }) {
   const [contentLoading, setContentLoading] = useState(false);
 
   const fetchFiles = useCallback(async () => {
+    if (!sandboxId) return;
     try {
       setLoading(true);
       setError(null);
       const res = await listFiles(sandboxId);
       setFiles(res.files || []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to fetch files');
     } finally {
       setLoading(false);
     }
@@ -146,6 +151,7 @@ export default function FileExplorer({ sandboxId }) {
   }, [fetchFiles]);
 
   const handleSelectFile = useCallback(async (path) => {
+    if (!path || !sandboxId) return;
     setSelectedFile(path);
     setContentLoading(true);
     setFileContent(null);

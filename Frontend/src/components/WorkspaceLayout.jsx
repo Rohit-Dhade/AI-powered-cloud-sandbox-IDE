@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSandbox } from '../context/SandboxContext';
 import { useAuth } from '../context/AuthContext';
 import ChatPanel from './ChatPanel';
@@ -7,16 +8,17 @@ import TerminalPanel from './TerminalPanel';
 import PreviewPanel from './PreviewPanel';
 
 export default function WorkspaceLayout() {
-  const { sandboxId, previewUrl, killSandbox } = useSandbox();
+  const { sandbox, clearSandbox } = useSandbox();
+  const sandboxId = sandbox?.sandboxId;
+  const previewUrl = sandbox?.previewUrl;
   const { user } = useAuth();
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'code' | 'logs'
   const [activeRightTab, setActiveRightTab] = useState('preview'); // 'preview' | 'terminal'
   const [logs, setLogs] = useState([]);
   const [leftWidth, setLeftWidth] = useState(42); // percentage
-  const [bottomHeight, setBottomHeight] = useState(30); // percentage
-  const [showBottomPanel, setShowBottomPanel] = useState(false);
   const isDraggingLeft = useRef(false);
-  const isDraggingBottom = useRef(false);
 
   // Resize left panel
   const handleLeftMouseDown = () => {
@@ -48,10 +50,30 @@ export default function WorkspaceLayout() {
     setLogs([]);
   }, []);
 
+  const handleExit = () => {
+    clearSandbox();
+    navigate('/');
+  };
+
   if (!sandboxId) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[#020617] text-slate-400">
-        <p className="text-sm font-mono">No active sandbox session</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#020617] text-slate-100 p-6 text-center">
+        <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-cyan-400 mb-4 shadow-[0_0_20px_rgba(34,211,238,0.15)] animate-pulse">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <path d="M8 21h8M12 17v4" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-white mb-2">No Active Sandbox Session</h2>
+        <p className="text-sm text-slate-400 max-w-md mb-8 leading-relaxed">
+          Please create a new project or select an existing project from your dashboard to launch a sandbox environment.
+        </p>
+        <button
+          onClick={() => navigate('/')}
+          className="px-6 py-3.5 rounded-2xl font-semibold text-white text-sm luminous-btn-primary shadow-lg hover:scale-105 transition-all cursor-pointer"
+        >
+          ← Return to Dashboard & Projects
+        </button>
       </div>
     );
   }
@@ -135,7 +157,7 @@ export default function WorkspaceLayout() {
           )}
 
           <button
-            onClick={killSandbox}
+            onClick={handleExit}
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-rose-950/30 hover:bg-rose-600 border border-rose-500/30 text-rose-300 hover:text-white text-xs font-medium transition-all cursor-pointer shadow-sm"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
