@@ -1,18 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import GoogleLoginButton from './GoogleLoginButton';
-import Navbar from './Navbar';
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   LOGIN PAGE — Monochrome Industrial
+   Design system: Dark mode, precise line borders, Geist/Fira Code fonts
+   Authentication: Google OAuth 2.0 (Backend Passport Session & JWT Cookie)
+   ═══════════════════════════════════════════════════════════════════════════════ */
 
 export default function LoginPage() {
-  const { login, isAuthenticated, error } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { isAuthenticated, error, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectNotice = location.state?.message;
+  // Retrieve any redirect state passed from ProtectedRoute
+  const redirectNotice = location.state?.message || location.state?.from?.pathname 
+    ? `Authentication required to access ${location.state?.from?.pathname || 'the workspace'}.`
+    : null;
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -20,119 +25,170 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!email || !password) return;
-    setLoading(true);
-    try {
-      await login(email, password);
-    } catch {
-      // Error handled in auth context
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="flex flex-col min-h-screen bg-[#020617] text-slate-100">
-      <Navbar />
+    <div className="min-h-screen w-full bg-[#0b0b0b] text-[#e5e2e1] flex flex-col items-center justify-center p-6 sm:p-10 select-none overflow-y-auto">
+      {/* Container */}
+      <div className="w-full max-w-[420px] flex flex-col items-center">
 
-      <div className="flex-1 flex items-center justify-center p-6 sm:p-10 relative overflow-hidden">
-        {/* Ambient background blur */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none opacity-20"
-          style={{ background: 'radial-gradient(circle, #4f46e5 0%, #22d3ee 60%, transparent 80%)', filter: 'blur(80px)' }} />
+        {/* ────────────── Brand Header ────────────── */}
+        <div className="text-center mb-9">
+          <Link
+            to="/"
+            className="
+              inline-block
+              text-3xl sm:text-4xl
+              font-bold
+              tracking-[-0.05em]
+              text-white
+              no-underline
+              hover:opacity-85
+              transition-opacity
+            "
+          >
+            SandboxAI
+          </Link>
+          <div className="mt-3 h-px w-10 bg-white/20 mx-auto" />
+        </div>
 
-        <div className="relative z-10 w-full max-w-md p-8 sm:p-10 rounded-3xl glass-panel shadow-2xl animate-fade-slide-in">
-          {/* Header */}
+        {/* ────────────── Main Card ────────────── */}
+        <div
+          className="
+            w-full
+            bg-[#141414]
+            border border-white/10
+            rounded-2xl
+            p-7 sm:p-9
+            shadow-[0_24px_80px_rgba(0,0,0,0.6)]
+            flex flex-col
+          "
+        >
+          {/* Card Header */}
           <div className="text-center mb-8">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-cyan-400 shadow-lg shadow-indigo-500/30">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-2">Welcome Back</h1>
-            <p className="text-xs sm:text-sm text-slate-400">Sign in to access your AI frontend sandboxes</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+              Sign in to SandboxAI
+            </h1>
+            <p className="mt-2 text-xs sm:text-sm text-white/60 leading-relaxed">
+              Secure single sign-on for developers.
+            </p>
           </div>
 
-          {/* Redirect Notice */}
+          {/* ────────────── Dynamic Notices ────────────── */}
           {redirectNotice && (
-            <div className="mb-6 p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium text-center leading-normal">
-              🔒 {redirectNotice}
+            <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-950/20 p-3.5 text-xs text-amber-200 leading-relaxed">
+              <span className="material-symbols-outlined text-sm shrink-0 mt-0.5 text-amber-400">
+                lock
+              </span>
+              <span>{redirectNotice}</span>
             </div>
           )}
 
-          {/* Error Message */}
           {error && (
-            <div className="mb-6 p-4 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-medium text-center">
-              ⚠️ {error}
+            <div className="mb-6 flex items-start gap-3 rounded-xl border border-rose-500/20 bg-rose-950/20 p-3.5 text-xs text-rose-300 leading-relaxed">
+              <span className="material-symbols-outlined text-sm shrink-0 mt-0.5 text-rose-400">
+                error
+              </span>
+              <span>{error}</span>
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5 text-left">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@company.com"
-                className="w-full px-4.5 py-3.5 rounded-2xl bg-[#051424]/90 border border-slate-700/60 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 text-sm shadow-inner transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono font-medium text-slate-300 mb-1.5 text-left">
-                Password
-              </label>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4.5 py-3.5 rounded-2xl bg-[#051424]/90 border border-slate-700/60 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 text-sm shadow-inner transition-all"
-              />
-            </div>
+          {/* ────────────── Primary SSO Action ────────────── */}
+          <div className="space-y-4">
+            <GoogleLoginButton
+              text="Continue with Google"
+              monochrome={false}
+              className="
+                !w-full
+                !h-13
+                !py-3.5
+                !px-5
+                !rounded-xl
+                !bg-white/5
+                !border-white/15
+                !text-white
+                !text-sm
+                !font-medium
+                hover:!bg-white/10
+                hover:!border-white/30
+                active:!scale-[0.98]
+                transition-all
+                cursor-pointer
+                shadow-sm
+              "
+            />
 
             <button
-              type="submit"
-              disabled={loading}
-              className="mt-2 w-full py-3.5 rounded-2xl font-semibold text-white text-sm luminous-btn-primary transition-all duration-200 cursor-pointer shadow-lg disabled:opacity-50"
+              type="button"
+              onClick={loginWithGoogle}
+              className="
+                w-full
+                h-13
+                py-3.5
+                px-5
+                rounded-xl
+                bg-white
+                text-black
+                font-semibold
+                text-sm
+                flex items-center justify-center gap-2.5
+                hover:bg-white/90
+                active:scale-[0.98]
+                transition-all
+                cursor-pointer
+                shadow-md
+              "
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-cyan-300 rounded-full animate-spin" />
-                  Signing In…
-                </span>
-              ) : (
-                'Sign In with Email'
-              )}
+              <span className="material-symbols-outlined text-lg">login</span>
+              <span>Sign In with Single Sign-On</span>
             </button>
-          </form>
-
-          {/* Divider */}
-          <div className="relative my-7 flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-indigo-500/20" />
-            </div>
-            <span className="relative px-4 bg-[#0d1c2d] text-[11px] font-mono uppercase text-slate-400">
-              Or continue with
-            </span>
           </div>
 
-          {/* Google Single Sign-On Button */}
-          <GoogleLoginButton text="Sign in with Google" className="w-full !py-3.5 !rounded-2xl shadow-indigo-500/20" />
-
-          {/* Footer note */}
-          <p className="mt-8 text-xs text-slate-500 text-center">
-            By signing in, you agree to SandboxAI's Terms of Service
-          </p>
+          {/* ────────────── Security Badges ────────────── */}
+          <div className="mt-8 pt-7 border-t border-white/10 flex flex-col gap-3">
+            <div className="flex items-center gap-3 text-xs text-white/50">
+              <span className="material-symbols-outlined text-base text-white/40">
+                verified_user
+              </span>
+              <span>Google OAuth 2.0 Verified Sign-In</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-white/50">
+              <span className="material-symbols-outlined text-base text-white/40">
+                key
+              </span>
+              <span>Stateless HTTP-Only JWT Session</span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-white/50">
+              <span className="material-symbols-outlined text-base text-white/40">
+                terminal
+              </span>
+              <span>Instant K8s Sandbox Workspace Access</span>
+            </div>
+          </div>
         </div>
+
+        {/* ────────────── Bottom Navigation & Terms ────────────── */}
+        <div className="mt-8 text-center space-y-3">
+          <p className="text-xs text-white/50 leading-relaxed max-w-[320px] mx-auto">
+            By signing in, you accept the SandboxAI developer terms and service policies.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/"
+              className="
+                text-xs
+                font-mono
+                text-white/40
+                hover:text-white
+                transition-colors
+                inline-flex items-center gap-1.5
+                no-underline
+              "
+            >
+              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              Return to Home
+            </Link>
+          </div>
+        </div>
+
       </div>
     </div>
   );
